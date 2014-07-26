@@ -1,0 +1,53 @@
+cd $HOME
+file=.sshlist_list
+if [[ "$1" = [aA] ]];then
+	rm -f .sshlist_tmp;history | grep "[0-9]  ssh" | grep @ |  awk '{$1=""; print}' | sed 's/ //' | uniq > .sshlist_tmp
+	file=.sshlist_tmp
+fi
+
+i=0
+
+for ssh in $(cat $file | tr " " "~");do
+	i=$((i+1))
+	ssh=$(echo $ssh | tr "~" " ")
+	echo "$i $ssh"
+done
+
+if [[ "$1" = [aA] ]];then
+	echo Quelle ligne voulez vous ajouter ?
+elif [[ "$1" = [rR] ]];then
+	echo Quelle ligne voulez vous supprimer ?
+else
+	echo Quelle connection ssh voulez vous lancer ?
+fi
+
+read val1
+
+for i in $(echo $val1 | sed 's/./ &/'g);do
+	if [ -z "$(echo "$i" | grep [0-9])" ];then
+		echo "$i n est pas un chiffre";val1=$(echo $val1 | tr -d $i)
+	fi
+done
+
+if [ -z "$val1" ];then
+	echo "Valeur vide";exit
+elif [ "$val1" -gt "$(cat .sshlist_tmp | wc -l)" ];then
+	echo "Ne peut etre plus que $(cat .sshlist_tmp | wc -l)";exit
+fi
+
+if [[ "$1" = [aA] ]];then
+	if [ -z "$(cat .sshlist_list | grep "$(cat .sshlist_tmp | head -$val1 | tail -1)")" ];then
+		cat .sshlist_tmp | head -$val1 | tail -1 | tr "~" " " >> .sshlist_list
+	else
+		echo "Valeur non ajoutee car deja existante."
+	fi
+elif [[ "$1" = [rR] ]];then
+	cat .sshlist_list | awk 'NR%'$val1'' | tr "~" " " > .sshlist_list.1
+	if ! [ -z "$(cat .sshlist_list.1 | tr -d '\n ')" ];then
+		mv .sshlist_list.1 .sshlist_list
+	fi
+
+else
+	cat .sshlist_list | tr "~" " " | sed 's/.* ssh/ssh/' | head -$val1 | tail -1 | sed 's/ssh //' | sed 's/-p/sur le port/' | sed 's/.*\.*@/Connexion avec l utilisateur & sur /' | tr -d @
+	$(cat .sshlist_list | tr "~" " " | sed 's/.* ssh/ssh/' | head -$val1 | tail -1)
+fi
